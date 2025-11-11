@@ -48,12 +48,42 @@ class Board:
             print()
         print()
     
+    # check that the straight path between two squares is clear for a move
+    def is_path_clear(self, start_pos, end_pos):
+        # compute deltas
+        start_row, start_col = start_pos
+        end_row, end_col = end_pos
+        d_row = end_row - start_row
+        d_col = end_col - start_col
+        # horizontal movement
+        if d_row == 0:
+            for col in range(min(start_col, end_col) + 1, max(start_col, end_col)):
+                if self.board[start_row][col] is not None:
+                    return False
+            return True
+        # vertical movement
+        elif d_col == 0:
+            for row in range(min(start_row, end_row) + 1, max(start_row, end_row)):
+                if self.board[row][start_col] is not None:
+                    return False
+            return True
+        # diagonal movement
+        elif abs(d_row) == abs(d_col):
+            for i in range(1, abs(d_row)):
+                if self.board[start_row + d_row // abs(d_row) * i][start_col + d_col // abs(d_col) * i] is not None:
+                    return False
+            return True
+        # invalid path
+        return False
+
+
+    # perform a move on the board
     def move_piece(self, start_pos, end_pos):
         # check that indices are valid
         if start_pos[0] < 0 or start_pos[0] > 7 or start_pos[1] < 0 or start_pos[1] > 7:
-            raise ValueError("Invalid start position")
+            raise ValueError("Invalid start position.")
         if end_pos[0] < 0 or end_pos[0] > 7 or end_pos[1] < 0 or end_pos[1] > 7:
-            raise ValueError("Invalid end position")
+            raise ValueError("Invalid end position.")
         # make the move
         piece = self.board[start_pos[0]][start_pos[1]]
         self.board[start_pos[0]][start_pos[1]] = None
@@ -65,8 +95,8 @@ class Board:
 class Piece:
 
     UNICODE_PIECES = {
-        "white": {"rook": "♖", "knight": "♘", "bishop": "♗", "queen": "♕", "king": "♔", "pawn": "♙"},
-        "black": {"rook": "♜", "knight": "♞", "bishop": "♝", "queen": "♛", "king": "♚", "pawn": "♟"}
+        WHITE: {"rook": "♖", "knight": "♘", "bishop": "♗", "queen": "♕", "king": "♔", "pawn": "♙"},
+        BLACK: {"rook": "♜", "knight": "♞", "bishop": "♝", "queen": "♛", "king": "♚", "pawn": "♟"}
     }
 
     # initialize the piece by color and type, e.g. Piece(WHITE, "rook")
@@ -101,15 +131,16 @@ class Piece:
             return (d_row == 2 and d_col == 1) or (d_row == 1 and d_col == 2)
         # pawn is a bit trickier
         elif self.type == "pawn":
-            if self.color == "white":
-                if d_row == 1 and d_col == 0:
+            signed_d_row = end_row - start_row
+            if self.color == WHITE:
+                if signed_d_row == 1 and d_col == 0: # forward 1 step
                     return True
-                if start_row == 1 and d_row == 2 and d_col == 0:
+                if start_row == 1 and signed_d_row == 2 and d_col == 0: # forwards 2 steps from start
                     return True
-            elif self.color == "black":
-                if d_row == 1 and d_col == 0:
+            elif self.color == BLACK:
+                if signed_d_row == -1 and d_col == 0: # forward 1 step
                     return True
-                if start_row == 6 and d_row == 2 and d_col == 0:
+                if start_row == 6 and signed_d_row == -2 and d_col == 0:  # forwards 2 steps from start
                     return True
         # conclude if-elif block
         return False
@@ -128,33 +159,49 @@ class Game:
     # main game loop
     def play(self):
         while True:
+
             # display the board
             self.board.display()
             print(f"{self.current_player}'s turn")
+
+            # make a move
             try:
                 # get the user's move
                 move = input("Enter your move: ")
+                if move.lower() == 'exit':
+                    break # quit shortcut
                 if len(move) != 4:
-                    errmsg = "Invalid input. Please use valid algebraic notation (e.g., 'e2e4')."
-                    raise ValueError
-                if move.lower() == 'exit': # quit
-                    break
-                # select the moving piece and check move validity
+                    print("Invalid input. Please use valid algebraic notation (e.g., 'e2e4').")
+                    continue
+                # select the piece
                 start_pos = _n2c(move[:2])
                 end_pos = _n2c(move[2:])
                 piece = self.board.board[start_pos[0]][start_pos[1]]
-                if piece is None or piece.color != self.current_player:
-                    errmsg = "Invalid input. Please select a valid move."
-                    raise ValueError
+                # check that destination square is legal
+                dest_piece = self.board.board[end_pos[0]][end_pos[1]]
+                if dest_piece is not None and dest_piece.color == self.current_player:
+                    print("You cannot capture your own piece! Please try again.")
+                    continue
+                # check move validity
+                if piece is None:
+                    print("Invalid input. Please select a valid piece.")
+                    continue
+                if piece.color != self.current_player:
+                    print(f"Invalid input. Please select a valid move for {self.current_player}.")
+                    continue
                 if not piece.is_valid_move(start_pos, end_pos):
-                    errmsg = f"Invalid input. Please select a valid move for your {piece.type}."
-                    raise ValueError
-                # make the move
+                    print(f"Invalid input. Please select a valid move for your {piece.type}.")
+                    continue
+                # check that path is clear for relevant pieces
+                if piece.type in ["rook", "bishop", "queen"]:
+                    if not self.board.is_path_clear(start_pos, end_pos):
+                        print(f"Invalid move, path is blocked. Please select a valid move for your {piece.type}.")
+                        continue
+                # make the move and switch players
                 self.board.move_piece(start_pos, end_pos)
-                # switch players if the move was successful
                 self.current_player = BLACK if self.current_player == WHITE else WHITE
             except (ValueError, IndexError):
-                print(errmsg)
+                print("GENERAL ERROR: Invalid move.")
 
 
 
