@@ -107,44 +107,6 @@ class Piece:
     # overwrite __str__ to use Unicode chess characters to display the pieces
     def __str__(self):
         return self.UNICODE_PIECES[self.color][self.type]
-    
-    
-    # check if the move is valid for the piece
-    def is_valid_move(self, start_pos, end_pos):
-        # null moves are illegal
-        if start_pos == end_pos:
-            return False
-        # compute deltas
-        start_row, start_col = start_pos
-        end_row, end_col = end_pos
-        d_row = abs(end_row - start_row)
-        d_col = abs(end_col - start_col)
-        # check if piece can make the move
-        if self.type == "king":
-            return (d_row <= 1 and d_col <= 1)
-        elif self.type == "rook":
-            return (d_row == 0 or d_col == 0)
-        elif self.type == "bishop":
-            return (d_row == d_col)
-        elif self.type == "queen":
-            return (d_row == 0 or d_col == 0) or (d_row == d_col)
-        elif self.type == "knight":
-            return (d_row == 2 and d_col == 1) or (d_row == 1 and d_col == 2)
-        # pawn is a bit trickier
-        elif self.type == "pawn":
-            signed_d_row = end_row - start_row
-            if self.color == WHITE:
-                if signed_d_row == 1 and d_col == 0: # forward 1 step
-                    return True
-                if start_row == 1 and signed_d_row == 2 and d_col == 0: # forwards 2 steps from start
-                    return True
-            elif self.color == BLACK:
-                if signed_d_row == -1 and d_col == 0: # forward 1 step
-                    return True
-                if start_row == 6 and signed_d_row == -2 and d_col == 0:  # forwards 2 steps from start
-                    return True
-        # conclude if-elif block
-        return False
 
 
 
@@ -239,16 +201,21 @@ class Game:
         # handle complex pawn logic
         if piece.type == "pawn":
             signed_d_row = end_row - start_row
-            if piece.color == WHITE:
-                if signed_d_row == 1 and d_col == 0: # forward 1 step
-                    return True
-                if start_row == 1 and signed_d_row == 2 and d_col == 0: # forwards 2 steps from start
-                    return True
-            elif piece.color == BLACK:
-                if signed_d_row == -1 and d_col == 0: # forward 1 step
-                    return True
-                if start_row == 6 and signed_d_row == -2 and d_col == 0:  # forwards 2 steps from start
-                    return True
+            direction = 1 if piece.color == WHITE else -1
+
+            # forward 1 step
+            if signed_d_row == direction and d_col == 0 and dest_piece is None:
+                return True
+            
+            # forward 2 steps from start rank
+            start_rank = 1 if piece.color == WHITE else 6
+            if start_row == start_rank and signed_d_row == direction * 2 and d_col == 0 and dest_piece is None:
+                # also check that path is clear, by checking that the first square is empty
+                return self.board.board[start_row + direction][start_col] is None
+
+            # diagonal capture
+            if signed_d_row == direction and d_col == 1 and dest_piece is not None:
+                return True # dest_piece color check already done in caller function
         
         # other pieces logic
         elif piece.type == "king":
