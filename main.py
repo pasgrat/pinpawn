@@ -108,6 +108,7 @@ class Piece:
     def __str__(self):
         return self.UNICODE_PIECES[self.color][self.type]
     
+    
     # check if the move is valid for the piece
     def is_valid_move(self, start_pos, end_pos):
         # null moves are illegal
@@ -173,40 +174,102 @@ class Game:
                 if len(move) != 4:
                     print("Invalid input. Please use valid algebraic notation (e.g., 'e2e4').")
                     continue
-                # select the piece
+                # check move validity
                 start_pos = _n2c(move[:2])
                 end_pos = _n2c(move[2:])
-                piece = self.board.board[start_pos[0]][start_pos[1]]
-                # check that destination square is legal
-                dest_piece = self.board.board[end_pos[0]][end_pos[1]]
-                if dest_piece is not None and dest_piece.color == self.current_player:
-                    print("You cannot capture your own piece! Please try again.")
+                if not self.is_move_legal(start_pos, end_pos):
+                    print(f"Illegal move. Please select a valid move.")
                     continue
-                # check move validity
-                if piece is None:
-                    print("Invalid input. Please select a valid piece.")
-                    continue
-                if piece.color != self.current_player:
-                    print(f"Invalid input. Please select a valid move for {self.current_player}.")
-                    continue
-                if not piece.is_valid_move(start_pos, end_pos):
-                    print(f"Invalid input. Please select a valid move for your {piece.type}.")
-                    continue
-                # check that path is clear for relevant pieces
-                if piece.type in ["rook", "bishop", "queen"]:
-                    if not self.board.is_path_clear(start_pos, end_pos):
-                        print(f"Invalid move, path is blocked. Please select a valid move for your {piece.type}.")
-                        continue
                 # make the move and switch players
                 self.board.move_piece(start_pos, end_pos)
                 self.current_player = BLACK if self.current_player == WHITE else WHITE
             except (ValueError, IndexError):
-                print("GENERAL ERROR: Invalid move.")
+                print("GENERAL ERROR: Invalid input or illegal move.")
+    
+
+    # general function to check if a move is legal
+    def is_move_legal(self, start_pos, end_pos):
+        piece = self.board.board[start_pos[0]][start_pos[1]]
+
+        # 0. check that the move makes sense
+        if start_pos == end_pos: return False
+
+        # 1. check that the piece exists
+        if piece is None:
+            print("Illegal move. Please select a valid piece.")
+            return False
+
+        # 2. check that the piece belongs to the current player
+        if piece.color != self.current_player:
+            print(f"Illegal move. Please select a valid move for {self.current_player}.")
+            return False
+
+        # 3. check for capturing own piece
+        dest_piece = self.board.board[end_pos[0]][end_pos[1]]
+        if dest_piece is not None and dest_piece.color == piece.color:
+            print("You cannot capture your own piece! Please try again.")
+            return False
+
+        # 4. check piece-specific move logic
+        if not self.is_piece_move_legal(piece, start_pos, end_pos, dest_piece):
+            return False
+
+        # 5. check for path obstructions
+        if piece.type in ["rook", "bishop", "queen"]:
+            if not self.board.is_path_clear(start_pos, end_pos):
+                print(f"Invalid move, path is obstructed. Please select a valid move for your {piece.type}.")
+                return False
+        
+        # 6. check if move puts own king in check
+        # TODO
+
+        # after all checks pass
+        return True
+    
+
+    # detailed move check function to handle more complex logic
+    def is_piece_move_legal(self, piece, start_pos, end_pos, dest_piece):
+
+        # compute deltas
+        start_row, start_col = start_pos
+        end_row, end_col = end_pos
+        d_row = abs(end_row - start_row)
+        d_col = abs(end_col - start_col)
+        
+        # handle complex pawn logic
+        if piece.type == "pawn":
+            signed_d_row = end_row - start_row
+            if piece.color == WHITE:
+                if signed_d_row == 1 and d_col == 0: # forward 1 step
+                    return True
+                if start_row == 1 and signed_d_row == 2 and d_col == 0: # forwards 2 steps from start
+                    return True
+            elif piece.color == BLACK:
+                if signed_d_row == -1 and d_col == 0: # forward 1 step
+                    return True
+                if start_row == 6 and signed_d_row == -2 and d_col == 0:  # forwards 2 steps from start
+                    return True
+        
+        # other pieces logic
+        elif piece.type == "king":
+            return (d_row <= 1 and d_col <= 1)
+        elif piece.type == "rook":
+            return (d_row == 0 or d_col == 0)
+        elif piece.type == "bishop":
+            return (d_row == d_col)
+        elif piece.type == "queen":
+            return (d_row == 0 or d_col == 0) or (d_row == d_col)
+        elif piece.type == "knight":
+            return (d_row == 2 and d_col == 1) or (d_row == 1 and d_col == 2)
+            
+        # conclude if-elif block
+        return False
+        
 
 
+
+# -----
 
 # test
 g = Game()
 g.play()
-
-
