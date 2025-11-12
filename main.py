@@ -90,6 +90,14 @@ class Board:
         self.board[end_pos[0]][end_pos[1]] = piece
 
 
+    # find the king of the specified color in the board
+    def find_king(self, color):
+        for r in range(8):
+            for c in range(8):
+                if self.board[r][c] and self.board[r][c].type == "king" and self.board[r][c].color == color:
+                    return (r, c) # found the king
+        return None # something went wrong
+
 
 # Piece class that represents a chess piece
 class Piece:
@@ -117,7 +125,9 @@ class Game:
     def __init__(self):
         self.board = Board()
         self.board.setup_board()
-        self.current_player = WHITE
+        self.curr_player = WHITE
+        self.curr_opponent = BLACK
+
 
     # main game loop
     def play(self):
@@ -125,7 +135,7 @@ class Game:
 
             # display the board
             self.board.display()
-            print(f"{self.current_player}'s turn")
+            print(f"{self.curr_player}'s turn")
 
             # make a move
             try:
@@ -139,22 +149,31 @@ class Game:
                 # check move validity
                 start_pos = _n2c(move[:2])
                 end_pos = _n2c(move[2:])
-                if not self.is_move_legal(start_pos, end_pos):
+                if not self.is_move_legal(start_pos, end_pos, self.curr_player):
                     print(f"Illegal move. Please select a valid move.")
                     continue
                 # make the move and switch players
                 self.board.move_piece(start_pos, end_pos)
-                self.current_player = BLACK if self.current_player == WHITE else WHITE
+                self.curr_player = BLACK if self.curr_player == WHITE else WHITE
+                self.curr_opponent = BLACK if self.curr_player == WHITE else WHITE
             except (ValueError, IndexError):
                 print("GENERAL ERROR: Invalid input or illegal move.")
+            
+            # check for check
+            king_pos = self.board.find_king(self.curr_player)
+            if king_pos and self.is_square_attacked(king_pos, self.curr_opponent):
+                print(f"\n{self.curr_player} is in check!")
+
     
 
-    # general function to check if a move is legal
-    def is_move_legal(self, start_pos, end_pos):
+    # general function to check if a move is legal for a player
+    def is_move_legal(self, start_pos, end_pos, player):
         piece = self.board.board[start_pos[0]][start_pos[1]]
 
         # 0. check that the move makes sense
-        if start_pos == end_pos: return False
+        if start_pos == end_pos:
+            print("Illegal move. Please select a valid move.")
+            return False
 
         # 1. check that the piece exists
         if piece is None:
@@ -162,8 +181,8 @@ class Game:
             return False
 
         # 2. check that the piece belongs to the current player
-        if piece.color != self.current_player:
-            print(f"Illegal move. Please select a valid move for {self.current_player}.")
+        if piece.color != player:
+            print(f"Illegal move. Please select a valid move for {player}.")
             return False
 
         # 3. check for capturing own piece
@@ -179,7 +198,7 @@ class Game:
         # 5. check for path obstructions
         if piece.type in ["rook", "bishop", "queen"]:
             if not self.board.is_path_clear(start_pos, end_pos):
-                print(f"Invalid move, path is obstructed. Please select a valid move for your {piece.type}.")
+                print(f"Illegal move, path is obstructed. Please select a valid move for your {piece.type}.")
                 return False
         
         # 6. check if move puts own king in check
@@ -229,8 +248,26 @@ class Game:
         elif piece.type == "knight":
             return (d_row == 2 and d_col == 1) or (d_row == 1 and d_col == 2)
             
-        # conclude if-elif block
+        # if we get here, the move is not legal
+        print("Illegal move, invalid piece logic. Please select a valid move.")
         return False
+    
+
+    # check if a square is attacked by a piece of a specific color
+    def is_square_attacked(self, position, attacking_color):
+        for r in range(8):
+            for c in range(8):
+                # check if there is a potential attacking piece
+                piece = self.board.board[r][c]
+                if piece is not None and piece.color == attacking_color:
+                    # check if the piece could attack the square
+                    if self.is_move_legal((r, c), position, self.curr_opponent):
+                        return True # attack detected
+                        # TODO: exclude pawns moving 1 or 2 squares forward
+        return False # no attack detected
+
+
+
         
 
 
