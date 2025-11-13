@@ -94,8 +94,8 @@ class Game:
         return True
     
 
-    # detailed move check function to handle more complex logic
-    def is_piece_move_legal(self, piece, start_pos, end_pos, dest_piece):
+    # geometric piece-specific move check function to handle complex logic
+    def is_piece_move_legal(self, piece, start_pos, end_pos, dest_piece, is_attack_check=False):
 
         # compute deltas
         start_row, start_col = start_pos
@@ -108,19 +108,20 @@ class Game:
             signed_d_row = end_row - start_row
             direction = 1 if piece.color == WHITE else -1
 
-            # forward 1 step
-            if signed_d_row == direction and d_col == 0 and dest_piece is None:
-                return True
-            
-            # forward 2 steps from start rank
-            start_rank = 1 if piece.color == WHITE else 6
-            if start_row == start_rank and signed_d_row == direction * 2 and d_col == 0 and dest_piece is None:
-                # also check that path is clear, by checking that the first square is empty
-                return self.board.board[start_row + direction][start_col] is None
-
             # diagonal capture
             if signed_d_row == direction and d_col == 1 and dest_piece is not None:
                 return True # dest_piece color check already done in caller function
+            
+            # forward moves (not allowed for attack checks)
+            if not is_attack_check:
+                # forward 1 step
+                if signed_d_row == direction and d_col == 0 and dest_piece is None:
+                    return True
+                # forward 2 steps from start rank
+                start_rank = 1 if piece.color == WHITE else 6
+                if start_row == start_rank and signed_d_row == direction * 2 and d_col == 0 and dest_piece is None:
+                    # also check that path is clear, by checking that the first square is empty
+                    return self.board.board[start_row + direction][start_col] is None
         
         # other pieces logic
         elif piece.type == "king":
@@ -147,8 +148,15 @@ class Game:
                 piece = self.board.board[r][c]
                 if piece is not None and piece.color == attacking_color:
                     # check if the piece could attack the square
-                    if self.is_move_legal((r, c), position, self.curr_opponent):
-                        return True # attack detected
-                        # TODO: exclude pawns moving 1 or 2 squares forward
+                    # check piece logic only, bypassing turn and friendly fire checks
+                    start_pos = (r, c)
+                    dest_piece = self.board.board[position[0]][position[1]] # for consistency
+                    if self.is_piece_move_legal(piece, start_pos, position, dest_piece, is_attack_check=True):
+                        # check path for sliding pieces
+                        if piece.type in ["rook", "bishop", "queen"]:
+                            if self.board.is_path_clear((r, c), position):
+                                return True # path clear, attack detected
+                        else:
+                            return True # for other pieces, attack detected
         return False # no attack detected
 
