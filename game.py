@@ -35,8 +35,9 @@ class Game:
                 # check move validity
                 start_pos = utils._n2c(move[:2])
                 end_pos = utils._n2c(move[2:])
-                if not self.is_move_legal(start_pos, end_pos, self.curr_player):
-                    print(f"Illegal move. Please select a valid move.")
+                is_legal, error_msg = self.is_move_legal(start_pos, end_pos, self.curr_player)
+                if not is_legal:
+                    print("\n" + error_msg)
                     continue
                 # make the move and switch players
                 self.board.move_piece(start_pos, end_pos)
@@ -58,40 +59,35 @@ class Game:
 
         # 0. check that the move makes sense
         if start_pos == end_pos:
-            print("Illegal move. Please select a valid move.")
-            return False
+            return (False, "Illegal move. Start and end square are the same.")
 
         # 1. check that the piece exists
         if piece is None:
-            print("Illegal move. Please select a valid piece.")
-            return False
+            return (False, "Illegal move. There is no piece at the starting square.")
 
         # 2. check that the piece belongs to the current player
         if piece.color != player:
-            print(f"Illegal move. Please select a valid move for {player}.")
-            return False
+            return (False, f"Illegal move. It is {player}'s turn.")
 
         # 3. check for capturing own piece
         dest_piece = self.board.board[end_pos[0]][end_pos[1]]
         if dest_piece is not None and dest_piece.color == piece.color:
-            print("You cannot capture your own piece! Please try again.")
-            return False
+            return (False, "Illegal move. You cannot capture your own piece.")
 
         # 4. check piece-specific move logic
         if not self.is_piece_move_legal(piece, start_pos, end_pos, dest_piece):
-            return False
+            return (False, f"Illegal move. A {piece.type} cannot move like that.")
 
         # 5. check for path obstructions
         if piece.type in ["rook", "bishop", "queen"]:
             if not self.board.is_path_clear(start_pos, end_pos):
-                print(f"Illegal move, path is obstructed. Please select a valid move for your {piece.type}.")
-                return False
+                return (False, f"Illegal move. The path for the {piece.type} is obstructed.")
         
         # 6. check if move puts own king in check
         # TODO
 
         # after all checks pass
-        return True
+        return (True, "")
     
 
     # geometric piece-specific move check function to handle complex logic
@@ -136,7 +132,6 @@ class Game:
             return (d_row == 2 and d_col == 1) or (d_row == 1 and d_col == 2)
             
         # if we get here, the move is not legal
-        print("Illegal move, invalid piece logic. Please select a valid move.")
         return False
     
 
