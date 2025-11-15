@@ -24,6 +24,7 @@ class Game:
             print(f"{self.curr_player}'s turn")
 
             # make a move
+            king_in_check = False # reset flag
             try:
                 # get the user's move
                 move = input("Enter your move: ")
@@ -45,11 +46,29 @@ class Game:
                 self.curr_opponent = BLACK if self.curr_player == WHITE else WHITE
             except (ValueError, IndexError):
                 print("GENERAL ERROR: Invalid input or illegal move.")
-            
+
             # check for check
             king_pos = self.board.find_king(self.curr_player)
             if king_pos and self.is_square_attacked(king_pos, self.curr_opponent):
-                print(f"\n{self.curr_player} is in check!")
+                king_in_check = True # temporary flag
+            
+            # check for checkmate or stalemate
+            moves = self.find_all_legal_moves(self.curr_player) # moves for the player who has to move now
+            print(f"{self.curr_player} has {len(moves)} legal move{'s' if len(moves) != 1 else ''} available") # feedback print
+            if not moves:
+                # no legal moves and king in check -> checkmate
+                if king_in_check:
+                    print(f"\n{self.curr_player} is in checkmate! {self.curr_opponent} is the winner!\n")
+                    break
+                # no legal moves and king not in check -> stalemate
+                else:
+                    print(f"\nStalemate! It's a draw.\n")
+                    break
+            
+            # no checkmate nor stalemate -> announce eventual check
+            if king_in_check:
+                print(f"\n{self.curr_player} is in check.")
+            
 
     
 
@@ -84,7 +103,21 @@ class Game:
                 return (False, f"Illegal move. The path for the {piece.type} is obstructed.")
         
         # 6. check if move puts own king in check
-        # TODO
+        # try to perform move (saving the state)
+        piece_at_start = self.board.board[start_pos[0]][start_pos[1]]
+        piece_at_end = self.board.board[end_pos[0]][end_pos[1]]
+        self.board.board[start_pos[0]][start_pos[1]] = None
+        self.board.board[end_pos[0]][end_pos[1]] = piece_at_start
+        # check if player's king is in check
+        is_illegal = False # temporary flag
+        king_pos = self.board.find_king(player)
+        if king_pos and self.is_square_attacked(king_pos, self.curr_opponent):
+            is_illegal = True # mark move as illegal
+        # restore the state and return if move was illegal
+        self.board.board[start_pos[0]][start_pos[1]] = piece_at_start
+        self.board.board[end_pos[0]][end_pos[1]] = piece_at_end
+        if is_illegal:
+            return (False, f"Illegal move. You cannot leave or put your own king in check.")
 
         # after all checks pass
         return (True, "")
@@ -155,3 +188,20 @@ class Game:
                             return True # for other pieces, attack detected
         return False # no attack detected
 
+
+    # lists all the legal moves for a player
+    def find_all_legal_moves(self, player):
+        moves = []
+        # find all starting squares with player's pieces
+        for r in range(8):
+            for c in range(8):
+                piece = self.board.board[r][c]
+                # if there's a piece, try to move it to all possible other squares
+                if piece is not None and piece.color == player:
+                    for end_row in range(8):
+                        for end_col in range(8):
+                            # check the legality of the move
+                            legal_flag, _ = self.is_move_legal((r, c), (end_row, end_col), player)
+                            if legal_flag:
+                                moves.append((r, c, end_row, end_col))
+        return moves
