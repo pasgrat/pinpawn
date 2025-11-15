@@ -19,33 +19,46 @@ class Game:
     def play(self):
         while True:
 
-            # display the board
+            # display the board and reset flags
             self.board.display()
             print(f"{self.curr_player}'s turn")
+            king_in_check = False
 
-            # make a move
-            king_in_check = False # reset flag
+            # make the player pick a move
             try:
-                # get the user's move
                 move = input("Enter your move: ")
                 if move.lower() == 'exit':
                     break # quit shortcut
                 if len(move) != 4:
                     print("Invalid input. Please use valid algebraic notation (e.g., 'e2e4').")
                     continue
-                # check move validity
                 start_pos = utils._n2c(move[:2])
                 end_pos = utils._n2c(move[2:])
-                is_legal, error_msg = self.is_move_legal(start_pos, end_pos, self.curr_player)
-                if not is_legal:
-                    print("\n" + error_msg)
-                    continue
-                # make the move and switch players
-                self.board.move_piece(start_pos, end_pos)
-                self.curr_player = BLACK if self.curr_player == WHITE else WHITE
-                self.curr_opponent = BLACK if self.curr_player == WHITE else WHITE
             except (ValueError, IndexError):
-                print("GENERAL ERROR: Invalid input or illegal move.")
+                print("GENERAL ERROR: Invalid input.\n")
+            
+            # check move validity and make the move
+            is_legal, error_msg = self.is_move_legal(start_pos, end_pos, self.curr_player)
+            if not is_legal:
+                print("\n" + error_msg)
+                continue
+            moved_piece = self.board.board[start_pos[0]][start_pos[1]]
+            self.board.move_piece(start_pos, end_pos)
+
+            # check for pawn promotion and handle it
+            if moved_piece.type == "pawn" and (end_pos[0] == 0 or end_pos[0] == 7):
+                new_type = "_"
+                while new_type not in ["Q", "R", "B", "K"]:
+                    new_type = input("Pick a piece for pawn promotion (Q,R,B,K): ")
+                    if new_type not in ["Q", "R", "B", "K"]:
+                        print("Invalid input, please try again.")
+                # replace pawn in end position with new piece
+                piece_ref = {"Q":"queen", "R":"rook", "B":"bishop", "K":"knight"}
+                self.board.board[end_pos[0]][end_pos[1]] = Piece(self.curr_player, piece_ref[new_type])
+
+            # switch players
+            self.curr_player = BLACK if self.curr_player == WHITE else WHITE
+            self.curr_opponent = BLACK if self.curr_player == WHITE else WHITE
 
             # check for check
             king_pos = self.board.find_king(self.curr_player)
