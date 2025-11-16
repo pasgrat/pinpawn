@@ -3,9 +3,11 @@ from board import *
 import utils
 
 
+
 # Game class to represent a chess game
 
 class Game:
+
 
     # initialize the board and the game
     def __init__(self):
@@ -13,6 +15,54 @@ class Game:
         self.board.setup_board()
         self.curr_player = WHITE
         self.curr_opponent = BLACK
+        # state initialization for castling
+        self.has_moved = {
+            WHITE: {'king': False, 'rook_a': False, 'rook_h': False},
+            BLACK: {'king': False, 'rook_a': False, 'rook_h': False}
+        }
+    
+
+    # helper function to check if all the conditions for castling apply
+    # start_pos and end_pos are those of the king
+    def _is_valid_castling(self, start_pos, end_pos, player):
+        
+        # 1. moving piece has to be the player's king
+        if self.board.board[start_pos[0]][start_pos[1]].type != "king": return False
+        
+        # 2. king must move by two squares horizontally
+        start_row, start_col = start_pos
+        end_row, end_col = end_pos
+        if abs(end_col - start_col) != 2 or end_row != start_row: return False
+        
+        # 3. king must not have been moved yet
+        if self.has_moved[player]['king']: return False
+        
+        # 4. king cannot be in check
+        if self.is_square_attacked(start_pos, self.curr_opponent): return False
+        
+        # 5. rook must not have been moved
+        if end_col > start_col:
+            # rook in h file, kingside castling
+            rook_col = 7
+            if self.has_moved[player]['rook_h']: return False
+        else:
+            # rook in a file, queenide castling
+            rook_col = 0
+            if self.has_moved[player]['rook_a']: return False
+
+        # 6. path must be clear
+        # 7. king cannot move through check nor land in check
+        if rook_col == 7:
+            path_squares = [(start_row, start_col + 1), (start_row, start_col + 2)]
+        else:
+            path_squares = [(start_row, start_col - 1), (start_row, start_col - 2), (start_row, start_col - 3)]
+        for square in path_squares:
+            if self.board.board[square[0]][square[1]] is not None: return False #6
+            if self.is_square_attacked(square, self.curr_opponent): return False #7
+        
+        # if every check has failed, the move is a valid castling
+        return True
+
 
 
     # main game loop
@@ -37,13 +87,36 @@ class Game:
             except (ValueError, IndexError):
                 print("GENERAL ERROR: Invalid input.\n")
             
-            # check move validity and make the move
+            # check move validity
             is_legal, error_msg = self.is_move_legal(start_pos, end_pos, self.curr_player)
             if not is_legal:
                 print("\n" + error_msg)
                 continue
             moved_piece = self.board.board[start_pos[0]][start_pos[1]]
-            self.board.move_piece(start_pos, end_pos)
+
+            # make the move
+            if moved_piece.type == "king" and abs(end_pos[1] - start_pos[1]) == 2:
+                # castling move, handle manually
+                self.board.move_piece(start_pos, end_pos) # move the king
+                if end_pos[1] > start_pos[1]: # kingside
+                    rook_start_pos = (start_pos[0], 7)
+                    rook_end_pos = (start_pos[0], 5)
+                else: # queenside
+                    rook_start_pos = (start_pos[0], 0)
+                    rook_end_pos = (start_pos[0], 3)
+                self.board.move_piece(rook_start_pos, rook_end_pos) # move the rook
+            else:
+                # normal move, use move_piece function
+                self.board.move_piece(start_pos, end_pos)
+
+            # potential state update for castling
+            if moved_piece.type == 'king':
+                self.has_moved[self.curr_player]['king'] = True
+            elif moved_piece.type == 'rook':
+                if start_pos[1] == 0: # a-file rook
+                    self.has_moved[self.curr_player]['rook_a'] = True
+                elif start_pos[1] == 7: # h-file rook
+                    self.has_moved[self.curr_player]['rook_h'] = True
 
             # check for pawn promotion and handle it
             if moved_piece.type == "pawn" and (end_pos[0] == 0 or end_pos[0] == 7):
@@ -87,6 +160,11 @@ class Game:
 
     # general function to check if a move is legal for a player
     def is_move_legal(self, start_pos, end_pos, player):
+
+        # check whether the move is a castling move
+        if self._is_valid_castling(start_pos, end_pos, player):
+            return (True, "")
+
         piece = self.board.board[start_pos[0]][start_pos[1]]
 
         # 0. check that the move makes sense
