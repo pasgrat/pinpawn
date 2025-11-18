@@ -20,6 +20,8 @@ class Game:
             WHITE: {'king': False, 'rook_a': False, 'rook_h': False},
             BLACK: {'king': False, 'rook_a': False, 'rook_h': False}
         }
+        # state initialization for en passant
+        self.en_passant_target_square = None
     
 
     # helper function to check if all the conditions for castling apply
@@ -69,10 +71,11 @@ class Game:
     def play(self):
         while True:
 
-            # display the board and reset flags
+            # display the board and set/reset flags
             self.board.display()
             print(f"{self.curr_player}'s turn")
             king_in_check = False
+            #self.en_passant_target_square = None
 
             # make the player pick a move
             try:
@@ -105,6 +108,13 @@ class Game:
                     rook_start_pos = (start_pos[0], 0)
                     rook_end_pos = (start_pos[0], 3)
                 self.board.move_piece(rook_start_pos, rook_end_pos) # move the rook
+            elif moved_piece.type == 'pawn' and end_pos == self.en_passant_target_square and self.board.board[end_pos[0]][end_pos[1]] is None:
+                # en passant move, handle manually
+                self.board.move_piece(start_pos, end_pos) # move attacking pawn
+                # remove captured pawn
+                direction = -1 if self.curr_player == WHITE else 1
+                captured_pawn_pos = (end_pos[0] + direction, end_pos[1])
+                self.board.board[captured_pawn_pos[0]][captured_pawn_pos[1]] = None
             else:
                 # normal move, use move_piece function
                 self.board.move_piece(start_pos, end_pos)
@@ -117,6 +127,13 @@ class Game:
                     self.has_moved[self.curr_player]['rook_a'] = True
                 elif start_pos[1] == 7: # h-file rook
                     self.has_moved[self.curr_player]['rook_h'] = True
+
+            # potential state update for en passant
+            if moved_piece.type == 'pawn' and abs(start_pos[0] - end_pos[0]) == 2:
+                # a pawn has moved from start, potential en passant opportunity
+                direction = 1 if moved_piece.color == WHITE else -1
+                # target square is the one behind the pawn
+                self.en_passant_target_square = (start_pos[0] + direction, start_pos[1])
 
             # check for pawn promotion and handle it
             if moved_piece.type == "pawn" and (end_pos[0] == 0 or end_pos[0] == 7):
@@ -161,10 +178,6 @@ class Game:
     # general function to check if a move is legal for a player
     def is_move_legal(self, start_pos, end_pos, player):
 
-        # check whether the move is a castling move
-        if self._is_valid_castling(start_pos, end_pos, player):
-            return (True, "")
-
         piece = self.board.board[start_pos[0]][start_pos[1]]
 
         # 0. check that the move makes sense
@@ -179,21 +192,25 @@ class Game:
         if piece.color != player:
             return (False, f"Illegal move. It is {player}'s turn.")
 
-        # 3. check for capturing own piece
+        # 3. check whether the move is a castling move
+        if self._is_valid_castling(start_pos, end_pos, player):
+            return (True, "")
+
+        # 4. check for capturing own piece
         dest_piece = self.board.board[end_pos[0]][end_pos[1]]
         if dest_piece is not None and dest_piece.color == piece.color:
             return (False, "Illegal move. You cannot capture your own piece.")
 
-        # 4. check piece-specific move logic
+        # 5. check piece-specific move logic
         if not self.is_piece_move_legal(piece, start_pos, end_pos, dest_piece):
             return (False, f"Illegal move. A {piece.type} cannot move like that.")
 
-        # 5. check for path obstructions
+        # 6. check for path obstructions
         if piece.type in ["rook", "bishop", "queen"]:
             if not self.board.is_path_clear(start_pos, end_pos):
                 return (False, f"Illegal move. The path for the {piece.type} is obstructed.")
         
-        # 6. check if move puts own king in check
+        # 7. check if move puts own king in check
         # try to perform move (saving the state)
         piece_at_start = self.board.board[start_pos[0]][start_pos[1]]
         piece_at_end = self.board.board[end_pos[0]][end_pos[1]]
@@ -229,8 +246,12 @@ class Game:
             direction = 1 if piece.color == WHITE else -1
 
             # diagonal capture
-            if signed_d_row == direction and d_col == 1 and dest_piece is not None:
-                return True # dest_piece color check already done in caller function
+            if signed_d_row == direction and d_col == 1:
+                if dest_piece is not None:
+                    return True # dest_piece color check already done in caller function
+                else: # no piece at destination square
+                    if end_pos == self.en_passant_target_square:
+                        return True # en passant diagonal capture
             
             # forward moves (not allowed for attack checks)
             if not is_attack_check:
