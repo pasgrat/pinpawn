@@ -75,7 +75,6 @@ class Game:
             self.board.display()
             print(f"{self.curr_player}'s turn")
             king_in_check = False
-            #self.en_passant_target_square = None
 
             # make the player pick a move
             try:
@@ -129,8 +128,9 @@ class Game:
                     self.has_moved[self.curr_player]['rook_h'] = True
 
             # potential state update for en passant
+            self.en_passant_target_square = None
             if moved_piece.type == 'pawn' and abs(start_pos[0] - end_pos[0]) == 2:
-                # a pawn has moved from start, potential en passant opportunity
+                # a pawn has moved from start, potential en passant opportunity for next turn
                 direction = 1 if moved_piece.color == WHITE else -1
                 # target square is the one behind the pawn
                 self.en_passant_target_square = (start_pos[0] + direction, start_pos[1])
