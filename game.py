@@ -1,6 +1,7 @@
 
-from board import *
 import utils
+from piece import Piece, WHITE, BLACK
+from board import Board
 
 
 

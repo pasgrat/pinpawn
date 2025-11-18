@@ -1,5 +1,5 @@
 
-from piece import *
+from piece import Piece, WHITE, BLACK
 
 
 # Board class that represents the chess board as a 2D array of either Piece objects or None
