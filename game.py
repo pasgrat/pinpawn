@@ -204,7 +204,9 @@ class Game:
 
         # 5. check piece-specific move logic
         if not self.is_piece_move_legal(piece, start_pos, end_pos, dest_piece):
-            return (False, f"Illegal move. A {piece.type} cannot move like that.")
+            if piece.type == "pawn": # path obstruction for 2-step pawn moves is checked in is_piece_move_legal
+                return (False, f"Illegal move for a {piece.type}, or path obstructed.")
+            return (False, f"Illegal move for a {piece.type}.")
 
         # 6. check for path obstructions
         if piece.type in ["rook", "bishop", "queen"]:

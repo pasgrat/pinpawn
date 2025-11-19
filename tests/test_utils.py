@@ -5,6 +5,7 @@ import sys
 sys.path.append('..')
 from utils import _n2c, _c2n
 
+
 class TestUtils(unittest.TestCase):
 
     def test_n2c(self):
