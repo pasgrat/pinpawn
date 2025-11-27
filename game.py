@@ -178,6 +178,7 @@ class Game:
             moves = self.find_all_legal_moves(self.curr_player) # moves for the player who has to move now
             print(f"{self.curr_player} has {len(moves)} legal move{'s' if len(moves) != 1 else ''} available") # feedback print
             if not moves:
+                self.board.display() # display final board state
                 # no legal moves and king in check -> checkmate
                 if king_in_check:
                     print(f"\n{self.curr_player} is in checkmate! {self.curr_opponent} is the winner!\n")
