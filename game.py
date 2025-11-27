@@ -68,6 +68,62 @@ class Game:
 
 
 
+    # function to perform a generic move, including all special moves
+    # checks for castling and en passant, executes the move, updates state and switches players
+    # to be called by the play loop AFTER validity check
+    def make_move(self, start_pos, end_pos):
+        moved_piece = self.board.board[start_pos[0]][start_pos[1]]
+        
+        # make the move
+        if moved_piece.type == "king" and abs(end_pos[1] - start_pos[1]) == 2:
+            # castling move, handle manually
+            self.board.move_piece(start_pos, end_pos) # move the king
+            if end_pos[1] > start_pos[1]: # kingside
+                rook_start_pos = (start_pos[0], 7)
+                rook_end_pos = (start_pos[0], 5)
+            else: # queenside
+                rook_start_pos = (start_pos[0], 0)
+                rook_end_pos = (start_pos[0], 3)
+            self.board.move_piece(rook_start_pos, rook_end_pos) # move the rook
+        elif moved_piece.type == 'pawn' and end_pos == self.en_passant_target_square and self.board.board[end_pos[0]][end_pos[1]] is None:
+            # en passant move, handle manually
+            self.board.move_piece(start_pos, end_pos) # move attacking pawn
+            # remove captured pawn
+            direction = -1 if self.curr_player == WHITE else 1
+            captured_pawn_pos = (end_pos[0] + direction, end_pos[1])
+            self.board.board[captured_pawn_pos[0]][captured_pawn_pos[1]] = None
+        else:
+            # normal move, use move_piece function
+            self.board.move_piece(start_pos, end_pos)
+
+        # potential state update for castling
+        if moved_piece.type == 'king':
+            self.has_moved[self.curr_player]['king'] = True
+        elif moved_piece.type == 'rook':
+            if start_pos[1] == 0: # a-file rook
+                self.has_moved[self.curr_player]['rook_a'] = True
+            elif start_pos[1] == 7: # h-file rook
+                self.has_moved[self.curr_player]['rook_h'] = True
+
+        # potential state update for en passant
+        self.en_passant_target_square = None
+        if moved_piece.type == 'pawn' and abs(start_pos[0] - end_pos[0]) == 2:
+            # a pawn has moved from start, potential en passant opportunity for next turn
+            direction = 1 if moved_piece.color == WHITE else -1
+            # target square is the one behind the pawn
+            self.en_passant_target_square = (start_pos[0] + direction, start_pos[1])
+
+        # handle pawn promotion (auto Queen for GUI simplicity)
+        # TODO: add promotion choice and logic
+        if moved_piece.type == "pawn" and (end_pos[0] == 0 or end_pos[0] == 7):
+             self.board.board[end_pos[0]][end_pos[1]] = Piece(moved_piece.color, "queen")
+
+        # switch players
+        self.curr_player = BLACK if self.curr_player == WHITE else WHITE
+        self.curr_opponent = BLACK if self.curr_player == WHITE else WHITE
+    
+    
+    
     # main game loop
     def play(self):
         while True:
@@ -98,58 +154,20 @@ class Game:
             moved_piece = self.board.board[start_pos[0]][start_pos[1]]
 
             # make the move
-            if moved_piece.type == "king" and abs(end_pos[1] - start_pos[1]) == 2:
-                # castling move, handle manually
-                self.board.move_piece(start_pos, end_pos) # move the king
-                if end_pos[1] > start_pos[1]: # kingside
-                    rook_start_pos = (start_pos[0], 7)
-                    rook_end_pos = (start_pos[0], 5)
-                else: # queenside
-                    rook_start_pos = (start_pos[0], 0)
-                    rook_end_pos = (start_pos[0], 3)
-                self.board.move_piece(rook_start_pos, rook_end_pos) # move the rook
-            elif moved_piece.type == 'pawn' and end_pos == self.en_passant_target_square and self.board.board[end_pos[0]][end_pos[1]] is None:
-                # en passant move, handle manually
-                self.board.move_piece(start_pos, end_pos) # move attacking pawn
-                # remove captured pawn
-                direction = -1 if self.curr_player == WHITE else 1
-                captured_pawn_pos = (end_pos[0] + direction, end_pos[1])
-                self.board.board[captured_pawn_pos[0]][captured_pawn_pos[1]] = None
-            else:
-                # normal move, use move_piece function
-                self.board.move_piece(start_pos, end_pos)
-
-            # potential state update for castling
-            if moved_piece.type == 'king':
-                self.has_moved[self.curr_player]['king'] = True
-            elif moved_piece.type == 'rook':
-                if start_pos[1] == 0: # a-file rook
-                    self.has_moved[self.curr_player]['rook_a'] = True
-                elif start_pos[1] == 7: # h-file rook
-                    self.has_moved[self.curr_player]['rook_h'] = True
-
-            # potential state update for en passant
-            self.en_passant_target_square = None
-            if moved_piece.type == 'pawn' and abs(start_pos[0] - end_pos[0]) == 2:
-                # a pawn has moved from start, potential en passant opportunity for next turn
-                direction = 1 if moved_piece.color == WHITE else -1
-                # target square is the one behind the pawn
-                self.en_passant_target_square = (start_pos[0] + direction, start_pos[1])
+            self.make_move(start_pos, end_pos)
 
             # check for pawn promotion and handle it
-            if moved_piece.type == "pawn" and (end_pos[0] == 0 or end_pos[0] == 7):
-                new_type = "_"
-                while new_type not in ["Q", "R", "B", "K"]:
-                    new_type = input("Pick a piece for pawn promotion (Q,R,B,K): ")
-                    if new_type not in ["Q", "R", "B", "K"]:
-                        print("Invalid input, please try again.")
-                # replace pawn in end position with new piece
-                piece_ref = {"Q":"queen", "R":"rook", "B":"bishop", "K":"knight"}
-                self.board.board[end_pos[0]][end_pos[1]] = Piece(self.curr_player, piece_ref[new_type])
-
-            # switch players
-            self.curr_player = BLACK if self.curr_player == WHITE else WHITE
-            self.curr_opponent = BLACK if self.curr_player == WHITE else WHITE
+            ### CURRENTLY DISABLED AS THE make_move() FUNCTION HANDLES PROMOTION FOR THE GUI
+            if False:
+                if moved_piece.type == "pawn" and (end_pos[0] == 0 or end_pos[0] == 7):
+                    new_type = "_"
+                    while new_type not in ["Q", "R", "B", "K"]:
+                        new_type = input("Pick a piece for pawn promotion (Q,R,B,K): ")
+                        if new_type not in ["Q", "R", "B", "K"]:
+                            print("Invalid input, please try again.")
+                    # replace pawn in end position with new piece
+                    piece_ref = {"Q":"queen", "R":"rook", "B":"bishop", "K":"knight"}
+                    self.board.board[end_pos[0]][end_pos[1]] = Piece(self.curr_player, piece_ref[new_type])
 
             # check for check
             king_pos = self.board.find_king(self.curr_player)
