@@ -31,6 +31,17 @@ def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("PinPawn")
+    
+    # show main menu
+    #main_menu(screen)
+    
+    # when user clicks "Play", run the game
+    run_game(screen)
+
+
+
+# function to run the actual chess game
+def run_game(screen):
     clock = pygame.time.Clock()
     screen.fill(pygame.Color("white"))
     
