@@ -1,5 +1,5 @@
 
-import pygame
+import pygame, sys, random
 from game import Game, WHITE, BLACK
 
 
@@ -10,6 +10,13 @@ DIMENSION = 8 # chess board
 SQ_SIZE = WIDTH // DIMENSION # size of single square
 MAX_FPS = 15
 IMAGES = {}
+
+# GUI COLORS
+BG_COLOR = pygame.Color("white")
+BTN_COLOR = pygame.Color("lightgray")
+BTN_HOVER = pygame.Color("darkgray")
+BTN_SELECTED = pygame.Color("yellow")
+TEXT_COLOR = pygame.Color("black")
 
 
 
@@ -33,15 +40,72 @@ def main():
     pygame.display.set_caption("PinPawn")
     
     # show main menu
-    #main_menu(screen)
+    player_color = main_menu(screen)
     
-    # when user clicks "Play", run the game
-    run_game(screen)
+    # when user selects the color and clicks "Play", run the game
+    run_game(screen, player_color)
+
+
+
+# function to display the main menu of the game
+def main_menu(screen):
+    clock = pygame.time.Clock()
+    font_title = pygame.font.SysFont("Helvetica", 48, True, False)
+    # button size
+    btn_w, btn_h = 200, 50
+    center_x = WIDTH // 2
+    # define buttons as rectangles
+    play_btn = pygame.Rect(center_x - btn_w//2, 350, btn_w, btn_h)
+    white_btn = pygame.Rect(center_x - 160, 250, 100, 40)
+    black_btn = pygame.Rect(center_x - 50, 250, 100, 40)
+    random_btn = pygame.Rect(center_x + 60, 250, 100, 40)
+    
+    # state
+    selected_option = WHITE # default to white
+    
+    while True:
+        mouse_pos = pygame.mouse.get_pos()
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+                
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if white_btn.collidepoint(mouse_pos):
+                    selected_option = WHITE
+                elif black_btn.collidepoint(mouse_pos):
+                    selected_option = BLACK
+                elif random_btn.collidepoint(mouse_pos):
+                    selected_option = "random"
+                elif play_btn.collidepoint(mouse_pos):
+                    if selected_option == "random":
+                        selected_option = random.choice([WHITE, BLACK]) # necessary to correctly display random button
+                    return selected_option
+
+        # draw the menu
+        screen.fill(BG_COLOR)
+        # game title
+        title_surf = font_title.render("PinPawn", True, TEXT_COLOR)
+        title_rect = title_surf.get_rect(center=(WIDTH//2, 100))
+        screen.blit(title_surf, title_rect)
+        # subtitle
+        font_sub = pygame.font.SysFont("Helvetica", 20)
+        sub_surf = font_sub.render("Play as:", True, TEXT_COLOR)
+        screen.blit(sub_surf, (WIDTH//2 - sub_surf.get_width()//2, 210))
+        # buttons
+        draw_button(screen, white_btn, "White", is_selected=(selected_option == WHITE), is_hovered=white_btn.collidepoint(mouse_pos))
+        draw_button(screen, black_btn, "Black", is_selected=(selected_option == BLACK), is_hovered=black_btn.collidepoint(mouse_pos))
+        draw_button(screen, random_btn, "Random", is_selected=(selected_option == "random"), is_hovered=random_btn.collidepoint(mouse_pos))
+        draw_button(screen, play_btn, "PLAY", is_hovered=play_btn.collidepoint(mouse_pos))
+        # display the menu
+        pygame.display.flip()
+        clock.tick(MAX_FPS)
 
 
 
 # function to run the actual chess game
-def run_game(screen):
+def run_game(screen, player_color):
     clock = pygame.time.Clock()
     screen.fill(pygame.Color("white"))
     
@@ -161,6 +225,17 @@ def draw_end_game_text(screen, text):
         HEIGHT // 2 - text_object.get_height() // 2
     )
     screen.blit(text_object, text_location.move(2, 2))
+
+
+# function to draw buttons on the menu screen
+def draw_button(screen, rect, text, is_selected=False, is_hovered=False):
+    color = BTN_SELECTED if is_selected else (BTN_HOVER if is_hovered else BTN_COLOR)
+    pygame.draw.rect(screen, color, rect)
+    pygame.draw.rect(screen, TEXT_COLOR, rect, 2) # border
+    font = pygame.font.SysFont("Helvetica", 24, True, False)
+    text_surf = font.render(text, True, TEXT_COLOR)
+    text_rect = text_surf.get_rect(center=rect.center)
+    screen.blit(text_surf, text_rect)
 
 
 
