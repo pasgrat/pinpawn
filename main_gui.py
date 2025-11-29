@@ -55,10 +55,11 @@ def main_menu(screen):
     btn_w, btn_h = 200, 50
     center_x = WIDTH // 2
     # define buttons as rectangles
-    play_btn = pygame.Rect(center_x - btn_w//2, 350, btn_w, btn_h)
-    white_btn = pygame.Rect(center_x - 160, 250, 100, 40)
-    black_btn = pygame.Rect(center_x - 50, 250, 100, 40)
-    random_btn = pygame.Rect(center_x + 60, 250, 100, 40)
+    play_btn = pygame.Rect(center_x - btn_w//2, 400, btn_w, btn_h)
+    white_btn = pygame.Rect(center_x - 190, 250, 120, 40)
+    black_btn = pygame.Rect(center_x - 60, 250, 120, 40)
+    random_btn = pygame.Rect(center_x + 70, 250, 120, 40)
+    twoplayers_btn = pygame.Rect(center_x - 60, 300, 120, 40)
     
     # state
     selected_option = WHITE # default to white
@@ -78,6 +79,8 @@ def main_menu(screen):
                     selected_option = BLACK
                 elif random_btn.collidepoint(mouse_pos):
                     selected_option = "random"
+                elif twoplayers_btn.collidepoint(mouse_pos):
+                    selected_option = "PVP"
                 elif play_btn.collidepoint(mouse_pos):
                     if selected_option == "random":
                         selected_option = random.choice([WHITE, BLACK]) # necessary to correctly display random button
@@ -97,6 +100,7 @@ def main_menu(screen):
         draw_button(screen, white_btn, "White", is_selected=(selected_option == WHITE), is_hovered=white_btn.collidepoint(mouse_pos))
         draw_button(screen, black_btn, "Black", is_selected=(selected_option == BLACK), is_hovered=black_btn.collidepoint(mouse_pos))
         draw_button(screen, random_btn, "Random", is_selected=(selected_option == "random"), is_hovered=random_btn.collidepoint(mouse_pos))
+        draw_button(screen, twoplayers_btn, "2 Players", is_selected=(selected_option == "PVP"), is_hovered=twoplayers_btn.collidepoint(mouse_pos))
         draw_button(screen, play_btn, "PLAY", is_hovered=play_btn.collidepoint(mouse_pos))
         # display the menu
         pygame.display.flip()
