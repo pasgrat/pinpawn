@@ -1,6 +1,7 @@
 
 import pygame, sys, random
 from game import Game, WHITE, BLACK
+from ai import get_random_move
 
 
 
@@ -116,6 +117,16 @@ def run_game(screen, player_color):
     game = Game() # initialize game engine
     load_graphics() # load graphics
     
+    # players configuration
+    white_is_human = True
+    black_is_human = True
+
+    if player_color == WHITE:
+        black_is_human = False
+    elif player_color == BLACK:
+        white_is_human = False
+    # if player_color == None, both are True (2 players mode)
+
     running = True
     game_over = False
     game_over_text = ""
@@ -124,14 +135,23 @@ def run_game(screen, player_color):
     
     # game loop
     while running:
-        for event in pygame.event.get():
+        
+        # 0. determine if turn is for human or AI
+        is_human_turn = False
+        if game.curr_player == WHITE and white_is_human:
+            is_human_turn = True
+        elif game.curr_player == BLACK and black_is_human:
+            is_human_turn = True
 
+        # 1. handle events for human turn
+        for event in pygame.event.get():
+        
             # if user quits the game
             if event.type == pygame.QUIT:
                 running = False
             
-            # handle mouse clicks
-            elif event.type == pygame.MOUSEBUTTONDOWN and not game_over:
+            # handle mouse clicks only if turn is human)
+            elif event.type == pygame.MOUSEBUTTONDOWN and not game_over and is_human_turn:
                 location = pygame.mouse.get_pos() # location of mouse as (x, y) tuple
                 col = location[0] // SQ_SIZE
                 row = 7 - location[1] // SQ_SIZE # pygame 0,0 is top left
@@ -177,7 +197,29 @@ def run_game(screen, player_color):
                         print(error_msg) # print error to console
                         player_clicks = [selected_square] # keep the second click as the new start
         
-        # display board
+        # 2. AI turn logic
+        if not game_over and not is_human_turn:
+            pygame.time.wait(500) # wait 0.5 seconds to make it look more realistic
+            ai_move = get_random_move(game)
+            if ai_move is None:
+                game_over = True # safety check
+            else:
+                start_pos, end_pos = ai_move
+                game.make_move(start_pos, end_pos)
+                print(f"AI Move: {start_pos} -> {end_pos}")
+                
+                # check for game over TODO: remove this duplicate code
+                moves = game.find_all_legal_moves(game.curr_player)
+                if len(moves) == 0:
+                    game_over = True
+                    king_pos = game.board.find_king(game.curr_player)
+                    if game.is_square_attacked(king_pos, game.curr_opponent):
+                        winner = "White" if game.curr_opponent == WHITE else "Black"
+                        game_over_text = f"Checkmate! {winner} wins!"
+                    else:
+                        game_over_text = "Stalemate! It's a draw."
+
+        # 3. display board
         draw_game_state(screen, game, selected_square)
         if game_over:
             draw_end_game_text(screen, game_over_text)
