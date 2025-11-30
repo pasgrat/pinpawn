@@ -1,7 +1,7 @@
 
 import pygame, sys, random
 from game import Game, WHITE, BLACK
-from ai import get_random_move, find_best_move
+from ai import get_random_move, get_minimax_move
 
 
 
@@ -18,6 +18,12 @@ BTN_COLOR = pygame.Color("lightgray")
 BTN_HOVER = pygame.Color("darkgray")
 BTN_SELECTED = pygame.Color("yellow")
 TEXT_COLOR = pygame.Color("black")
+
+# DIFFICULTY
+DIFF_VERY_EASY = 0
+DIFF_EASY = 1
+DIFF_MEDIUM = 2
+DIFF_HARD = 3
 
 
 
@@ -39,12 +45,10 @@ def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("PinPawn")
-    
     # show main menu
-    player_color = main_menu(screen)
-    
-    # when user selects the color and clicks "Play", run the game
-    run_game(screen, player_color)
+    player_color, difficulty = main_menu(screen)
+    # run the game when user selects the game mode, difficulty, and clicks "Play"
+    run_game(screen, player_color, difficulty)
 
 
 
@@ -52,56 +56,90 @@ def main():
 def main_menu(screen):
     clock = pygame.time.Clock()
     font_title = pygame.font.SysFont("Helvetica", 48, True, False)
-    # button size
-    btn_w, btn_h = 200, 50
+    font_sub = pygame.font.SysFont("Helvetica", 20)
+
+    # buttons size and position parameters
+    btn_w, btn_h = 120, 40
     center_x = WIDTH // 2
-    # define buttons as rectangles
-    play_btn = pygame.Rect(center_x - btn_w//2, 400, btn_w, btn_h)
-    white_btn = pygame.Rect(center_x - 190, 250, 120, 40)
-    black_btn = pygame.Rect(center_x - 60, 250, 120, 40)
-    random_btn = pygame.Rect(center_x + 70, 250, 120, 40)
-    twoplayers_btn = pygame.Rect(center_x - 60, 300, 120, 40)
+    row1_y, row2_y, row3_y = 130, 280, 420
+    gap = 10
+    total_w = (btn_w * 2) + (gap * 2)
+    start_x = center_x - (total_w // 2)
+    # buttons row 1 (game mode)
+    white_btn  = pygame.Rect(center_x-190, row1_y, 120, btn_h)
+    black_btn  = pygame.Rect(center_x-60, row1_y, 120, btn_h)
+    random_btn = pygame.Rect(center_x+70, row1_y, 120, btn_h)
+    pvp_btn    = pygame.Rect(center_x-60, row1_y+50, 120, btn_h)
+    # buttons row 2 (difficulty)
+    diff0_btn = pygame.Rect(start_x,               row2_y,    btn_w, btn_h)
+    diff1_btn = pygame.Rect(start_x + (btn_w+gap), row2_y,    btn_w, btn_h)
+    diff2_btn = pygame.Rect(start_x,               row2_y+50, btn_w, btn_h)
+    diff3_btn = pygame.Rect(start_x + (btn_w+gap), row2_y+50, btn_w, btn_h)
+    # buttons row 3 (play)
+    play_btn = pygame.Rect(center_x - (btn_w+80)//2, row3_y, btn_w+80, btn_h+10)
     
     # state
-    selected_option = WHITE # default to white
+    selected_option = WHITE # default
+    selected_difficulty = DIFF_MEDIUM # default
     
     while True:
         mouse_pos = pygame.mouse.get_pos()
         
+        # --- EVENT HANDLING SECTION ---
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
                 
             if event.type == pygame.MOUSEBUTTONDOWN:
+                # color choice logic
                 if white_btn.collidepoint(mouse_pos):
                     selected_option = WHITE
                 elif black_btn.collidepoint(mouse_pos):
                     selected_option = BLACK
                 elif random_btn.collidepoint(mouse_pos):
                     selected_option = "random"
-                elif twoplayers_btn.collidepoint(mouse_pos):
+                elif pvp_btn.collidepoint(mouse_pos):
                     selected_option = "PVP"
-                elif play_btn.collidepoint(mouse_pos):
-                    if selected_option == "random":
-                        selected_option = random.choice([WHITE, BLACK]) # necessary to correctly display random button
-                    return selected_option
+                # difficulty choice logic
+                if selected_option != "PVP":
+                    if diff0_btn.collidepoint(mouse_pos): selected_difficulty = DIFF_VERY_EASY
+                    elif diff1_btn.collidepoint(mouse_pos): selected_difficulty = DIFF_EASY
+                    elif diff2_btn.collidepoint(mouse_pos): selected_difficulty = DIFF_MEDIUM
+                    elif diff3_btn.collidepoint(mouse_pos): selected_difficulty = DIFF_HARD
+                # play button logic
+                if play_btn.collidepoint(mouse_pos):
+                    final_color = selected_option
+                    if final_color == "random":
+                        final_color = random.choice([WHITE, BLACK]) # necessary to correctly display random button
+                    return final_color, selected_difficulty
+
+        # --- DRAWING SECTION ---
 
         # draw the menu
         screen.fill(BG_COLOR)
         # game title
         title_surf = font_title.render("PinPawn", True, TEXT_COLOR)
-        title_rect = title_surf.get_rect(center=(WIDTH//2, 100))
+        title_rect = title_surf.get_rect(center=(WIDTH//2, 50))
         screen.blit(title_surf, title_rect)
         # subtitle
-        font_sub = pygame.font.SysFont("Helvetica", 20)
         sub_surf = font_sub.render("Play as:", True, TEXT_COLOR)
-        screen.blit(sub_surf, (WIDTH//2 - sub_surf.get_width()//2, 210))
-        # buttons
+        screen.blit(sub_surf, (WIDTH//2 - sub_surf.get_width()//2, row1_y-30))
+        # buttons row 1 (game mode)
         draw_button(screen, white_btn, "White", is_selected=(selected_option == WHITE), is_hovered=white_btn.collidepoint(mouse_pos))
         draw_button(screen, black_btn, "Black", is_selected=(selected_option == BLACK), is_hovered=black_btn.collidepoint(mouse_pos))
         draw_button(screen, random_btn, "Random", is_selected=(selected_option == "random"), is_hovered=random_btn.collidepoint(mouse_pos))
-        draw_button(screen, twoplayers_btn, "2 Players", is_selected=(selected_option == "PVP"), is_hovered=twoplayers_btn.collidepoint(mouse_pos))
+        draw_button(screen, pvp_btn, "2 Players", is_selected=(selected_option == "PVP"), is_hovered=pvp_btn.collidepoint(mouse_pos))
+        # buttons row 2 (difficulty)
+        if selected_option != "PVP":
+            sub_diff = font_sub.render("Select AI difficulty:", True, TEXT_COLOR)
+            screen.blit(sub_diff, (WIDTH//2 - sub_diff.get_width()//2, row2_y-30))
+            draw_button(screen, diff0_btn, "Easiest", is_selected=(selected_difficulty == DIFF_VERY_EASY), is_hovered=diff0_btn.collidepoint(mouse_pos))
+            draw_button(screen, diff1_btn, "Easy", is_selected=(selected_difficulty == DIFF_EASY), is_hovered=diff1_btn.collidepoint(mouse_pos))
+            draw_button(screen, diff2_btn, "Medium", is_selected=(selected_difficulty == DIFF_MEDIUM), is_hovered=diff2_btn.collidepoint(mouse_pos))
+            draw_button(screen, diff3_btn, "Hard", is_selected=(selected_difficulty == DIFF_HARD), is_hovered=diff3_btn.collidepoint(mouse_pos))
+        # buttons row 3 (play)
         draw_button(screen, play_btn, "PLAY", is_hovered=play_btn.collidepoint(mouse_pos))
         # display the menu
         pygame.display.flip()
@@ -110,7 +148,7 @@ def main_menu(screen):
 
 
 # function to run the actual chess game
-def run_game(screen, player_color):
+def run_game(screen, player_color, difficulty):
     clock = pygame.time.Clock()
     screen.fill(pygame.Color("white"))
     
@@ -186,8 +224,13 @@ def run_game(screen, player_color):
         
         # 2. AI turn logic
         if not game_over and not is_human_turn:
-            pygame.time.wait(500) # wait 0.5 seconds to make it look more realistic
-            ai_move = find_best_move(game) #get_random_move(game)
+            pygame.time.wait(500) # wait at least 0.5 seconds to make it look more realistic
+            # get AI move
+            if difficulty == DIFF_VERY_EASY:
+                ai_move = get_random_move(game)
+            else:
+                ai_move = get_minimax_move(game, difficulty)
+            # make AI move
             if ai_move is None:
                 game_over = True # safety check
             else:

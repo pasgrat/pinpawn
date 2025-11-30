@@ -10,8 +10,8 @@ PIECE_SCORE = {"king": 0, "queen": 9, "rook": 5, "bishop": 3, "knight": 3,"pawn"
 
 
 # function to find the best move on a given game state, using minimax with alpha-beta pruning
-def find_best_move(game):
-    DEPTH = 2 # minimax search depth
+# takes as optional input the depth of the minimax search (defaults to 2)
+def get_minimax_move(game, depth=2):
     moves = game.find_all_legal_moves(game.curr_player)
     random.shuffle(moves) # randomize order to avoid AI playing the exact same moves every time
     maximize = True if game.curr_player == WHITE else False # flag to check who is maximizing
@@ -29,7 +29,7 @@ def find_best_move(game):
             end_pos = (move[2], move[3])
             game_copy.make_move(start_pos, end_pos)
             # perform minimax
-            evaluation = minimax(game_copy, DEPTH - 1, alpha, beta, False) # recursive call
+            evaluation = minimax(game_copy, depth - 1, alpha, beta, False) # recursive call
             if evaluation > max_eval:
                 max_eval = evaluation
                 best_move = (start_pos, end_pos)
@@ -47,7 +47,7 @@ def find_best_move(game):
             end_pos = (move[2], move[3])
             game_copy.make_move(start_pos, end_pos)
             # perform minimax
-            evaluation = minimax(game_copy, DEPTH - 1, alpha, beta, True)
+            evaluation = minimax(game_copy, depth - 1, alpha, beta, True)
             if evaluation < min_eval:
                 min_eval = evaluation
                 best_move = (start_pos, end_pos)
