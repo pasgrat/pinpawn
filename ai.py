@@ -2,10 +2,11 @@
 import random
 import copy
 from game import WHITE, BLACK
+from pst import PIECE_TABLES
 
 
 # piece values (positive for white, negative for black)
-PIECE_SCORE = {"king": 0, "queen": 9, "rook": 5, "bishop": 3, "knight": 3,"pawn": 1}
+PIECE_SCORE = {"king": 0, "queen": 900, "rook": 500, "bishop": 330, "knight": 320, "pawn": 100}
 
 
 
@@ -67,7 +68,14 @@ def minimax(game, depth, alpha, beta, maximizing_player):
     # list moves and check for game over inside the recursion
     moves = game.find_all_legal_moves(game.curr_player)
     if len(moves) == 0:
-        return score_board(game.board) # use current score (high/low if checkmate)
+        # if checkmate, return high/low score to incentivize moves that lead to it
+        if game.is_square_attacked(game.board.find_king(game.curr_player), game.curr_opponent):
+            if maximizing_player:
+                return -100000 + depth # white must favor later black checkmates
+            else:
+                return 100000 - depth # black must favor sooner black checkmates
+        else:
+            return 0 # stalemate
 
     if maximizing_player: # white
         max_eval = -100000
@@ -97,8 +105,31 @@ def minimax(game, depth, alpha, beta, maximizing_player):
         return min_eval
 
 
-# function to evaluate the score of a given board (positive = white advantange)
+# function to evaluate the score of a given board using PST (positive = white advantange)
 def score_board(board):
+    score = 0
+    for r in range(8):
+        for c in range(8):
+            piece = board.board[r][c]
+            if piece is not None:
+                # material score
+                material_score = PIECE_SCORE[piece.type]
+                # positional score
+                if piece.color == WHITE:
+                    idx = r*8 + c # 2D to 1D index
+                    pos_score = PIECE_TABLES[piece.type][idx]
+                    score += material_score + pos_score
+                else:
+                    # black pieces use a mirrored PST
+                    idx = (r-7)*8 + c
+                    pos_score = PIECE_TABLES[piece.type][idx]
+                    score -= material_score + pos_score
+    return score
+
+
+### UNUSED
+# function to evaluate the score of a given board (positive = white advantange)
+def score_board_trivial(board):
     score = 0
     for r in range(8):
         for c in range(8):
@@ -113,7 +144,6 @@ def score_board(board):
 
 
 
-### UNUSED
 # function that returns a random legal move (tuple of tuples) or None, for the given game state
 def get_random_move(game):
     valid_moves = game.find_all_legal_moves(game.curr_player)
