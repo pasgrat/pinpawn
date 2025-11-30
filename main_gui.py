@@ -1,7 +1,7 @@
 
 import pygame, sys, random
 from game import Game, WHITE, BLACK
-from ai import get_random_move
+from ai import get_random_move, find_best_move
 
 
 
@@ -187,7 +187,7 @@ def run_game(screen, player_color):
         # 2. AI turn logic
         if not game_over and not is_human_turn:
             pygame.time.wait(500) # wait 0.5 seconds to make it look more realistic
-            ai_move = get_random_move(game)
+            ai_move = find_best_move(game) #get_random_move(game)
             if ai_move is None:
                 game_over = True # safety check
             else:
