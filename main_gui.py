@@ -180,19 +180,6 @@ def run_game(screen, player_color):
                         selected_square = None
                         player_clicks = [] # reset clicks
 
-                        # check for game over
-                        moves = game.find_all_legal_moves(game.curr_player)
-                        if len(moves) == 0:
-                            game_over = True
-                            king_pos = game.board.find_king(game.curr_player)
-                            if game.is_square_attacked(king_pos, game.curr_opponent):
-                                # king is in check, checkmate
-                                winner = "White" if game.curr_opponent == WHITE else "Black"
-                                game_over_text = f"Checkmate! {winner} wins!"
-                            else:
-                                # king is not in check, stalemate
-                                game_over_text = "Stalemate! It's a draw."
-
                     else:
                         print(error_msg) # print error to console
                         player_clicks = [selected_square] # keep the second click as the new start
@@ -207,19 +194,21 @@ def run_game(screen, player_color):
                 start_pos, end_pos = ai_move
                 game.make_move(start_pos, end_pos)
                 print(f"AI Move: {start_pos} -> {end_pos}")
-                
-                # check for game over TODO: remove this duplicate code
-                moves = game.find_all_legal_moves(game.curr_player)
-                if len(moves) == 0:
-                    game_over = True
-                    king_pos = game.board.find_king(game.curr_player)
-                    if game.is_square_attacked(king_pos, game.curr_opponent):
-                        winner = "White" if game.curr_opponent == WHITE else "Black"
-                        game_over_text = f"Checkmate! {winner} wins!"
-                    else:
-                        game_over_text = "Stalemate! It's a draw."
 
-        # 3. display board
+        # 3. check for game over
+        moves = game.find_all_legal_moves(game.curr_player)
+        if len(moves) == 0:
+            game_over = True
+            king_pos = game.board.find_king(game.curr_player)
+            if game.is_square_attacked(king_pos, game.curr_opponent):
+                # king is in check, checkmate
+                winner = "White" if game.curr_opponent == WHITE else "Black"
+                game_over_text = f"Checkmate! {winner} wins!"
+            else:
+                # king is not in check, stalemate
+                game_over_text = "Stalemate! It's a draw."
+
+        # 4. display board
         draw_game_state(screen, game, selected_square)
         if game_over:
             draw_end_game_text(screen, game_over_text)
